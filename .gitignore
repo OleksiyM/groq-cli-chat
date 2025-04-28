@@ -1,0 +1,27 @@
+# Build artifacts
+bin/
+dist/
+
+# Go-specific
+*.exe
+*.dll
+*.so
+*.dylib
+go.sum
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.sublime-*
+zed/
+
+# Temporary files
+*.log
+*.tmp
+*.swp
+
+# Docker
+*.dockerignore
+
+# macOS
+.DS_Store
