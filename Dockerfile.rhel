@@ -1,0 +1,12 @@
+# Build stage: Copy CA certificates from ubi9/ubi
+FROM registry.access.redhat.com/ubi9/ubi AS certs
+RUN dnf install -y ca-certificates && dnf clean all
+
+# Final stage: Use ubi9/ubi-micro for minimal image
+FROM registry.access.redhat.com/ubi9/ubi-micro
+# Copy CA certificates
+COPY --from=certs /etc/pki/tls/certs/ca-bundle.crt /etc/pki/tls/certs/ca-bundle.crt
+# Copy the Linux amd64 release binary
+COPY ./bin/release/linux-amd64/groq-chat .
+# Run the groq-chat CLI
+CMD ["./groq-chat"]
