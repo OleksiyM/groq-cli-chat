@@ -165,7 +165,7 @@ docker run --rm -it -e GROQ_API_KEY=$GROQ_API_KEY -v $HOME/.groq-chat:/root/.gro
 Contributions are welcome! Stay tuned for the GitHub repository to submit issues, feature requests, or pull requests.
 
 ## License
-MIT License.
+[MIT License](LICENSE).
 
 ## Acknowledgments
 - Built with [Go](https://golang.org), [Cobra](https://github.com/spf13/cobra), and [Viper](https://github.com/spf13/viper).
