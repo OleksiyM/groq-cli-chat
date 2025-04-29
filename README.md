@@ -84,7 +84,7 @@ groq-chat/
 Currently, `groq-chat` is distributed via GitHub Releases. Cloning and GitHub Actions setup will be available in the next version.
 
 ### Download from GitHub Releases
-1. Visit the [GitHub Releases page](#) (link TBD after repo creation).
+1. Visit the [GitHub Releases page](https://github.com/OleksiyM/groq-cli-chat/releases).
 2. Download the appropriate binary for your platform:
    - Linux: `groq-chat-linux-amd64.tar.gz`
    - Windows: `groq-chat-windows-amd64.zip`
@@ -155,7 +155,7 @@ docker run --rm -it -e GROQ_API_KEY=$GROQ_API_KEY -v $HOME/.groq-chat:/root/.gro
    ```
 
 ## Roadmap
-- [ ] Create GitHub repository with cloning instructions.
+- [x] Create GitHub repository with cloning instructions.
 - [ ] Add GitHub Actions for automated builds, tests, and Docker Hub pushes.
 - [ ] **May be** Enhance UI with ANSI colors for better readability.
 - [ ] **May be** Support additional platforms and distributions.
