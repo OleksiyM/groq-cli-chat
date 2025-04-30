@@ -1,18 +1,32 @@
-name: Build, Test, and Publish groq-cli-chat
+name: Build, Test, Publish & Release groq-cli-chat
 
+# Permissions required for release uploads and potentially package registry pushes
 permissions:
-  contents: write  # Required for create-release job to upload assets
+  contents: write # Needed for softprops/action-gh-release to create/upload release assets
+  packages: write # Needed if pushing Docker images to GitHub Packages (GHCR) instead of Docker Hub
 
 on:
   push:
     branches:
-      - main
+      - main # Build and test on pushes to main
   release:
-    types: [created]
+    types: [created] # Build, test, publish Docker images, and upload release assets when a release is created
+
+env:
+  # Set the Go version to use
+  GO_VERSION: '1.24.1'
+  # Set your Docker Hub username (or GHCR path like ghcr.io/YourUsername)
+  DOCKER_USERNAME: OleksiyML
+  # Base name for the Docker image
+  DOCKER_IMAGE_BASE: ${{ secrets.DOCKERHUB_USERNAME || env.DOCKER_USERNAME }}/groq-cli-chat
 
 jobs:
-  build-and-test:
+  # Job 1: Build binaries for all platforms and run tests
+  build:
+    name: Build & Test
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }} # Pass version to other jobs
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,46 +34,108 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.1'
+          go-version: ${{ env.GO_VERSION }}
+          cache: true # Enable Go build cache
 
       - name: Install dependencies
         run: go mod tidy
 
       - name: Run tests
         run: go test ./... -v
-        continue-on-error: true # Allow workflow to proceed if no tests exist
+        # Decide if you want the build to fail if tests fail (remove continue-on-error)
+        # continue-on-error: true
 
-      - name: Build binaries
-        run: make release
+      # Determine version: Use tag from release event, or 'dev' for main branch pushes
+      - name: Get Version
+        id: get_version
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=dev-$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build release binaries (using Makefile)
+        run: make release # Ensure Makefile uses VERSION and creates all targets
         env:
-          VERSION: ${{ github.event.release.tag_name || '0.1.0' }}
+          # Pass the determined version to the Makefile
+          # Ensure your Makefile uses this VERSION variable for naming/tagging
+          VERSION: ${{ steps.get_version.outputs.version }}
 
-      - name: Upload build artifacts
+      - name: List built files # Verify what 'make release' produced
+        run: ls -lR bin/release
+
+      - name: Upload build artifacts (all files)
         uses: actions/upload-artifact@v4
         with:
-          name: binaries
-          path: bin/release/*
+          name: binaries-${{ steps.get_version.outputs.version }} # Include version in artifact name
+          path: bin/release/** # Upload everything preserving structure
           retention-days: 7
 
+  # Job 2: Publish Docker images (only on release event)
   publish-docker:
+    name: Publish Docker (${{ matrix.distro }}/${{ matrix.arch }})
     if: github.event_name == 'release' && github.event.action == 'created'
-    needs: build-and-test
+    needs: build # Depends on the build job completing successfully
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Define combinations of distro and architecture for Docker builds
+        include:
+          - distro: debian
+            dockerfile: ./Dockerfile
+            arch: amd64
+          - distro: debian
+            dockerfile: ./Dockerfile
+            arch: arm64
+          - distro: rhel
+            dockerfile: ./Dockerfile-rhel
+            arch: amd64
+          - distro: rhel
+            dockerfile: ./Dockerfile-rhel
+            arch: arm64
+      fail-fast: false # Don't cancel other matrix jobs if one fails
+
     steps:
-      - name: Check out the repo
+      - name: Checkout code (needed for Dockerfiles)
         uses: actions/checkout@v4
 
-      - name: Download binaries artifact
+      - name: Get Version from Needs
+        id: get_version
+        run: echo "version=${{ needs.build.outputs.version }}" >> $GITHUB_OUTPUT
+
+      - name: Download specific binary artifact
         uses: actions/download-artifact@v4
         with:
-          name: binaries
-          path: bin/release
+          name: binaries-${{ steps.get_version.outputs.version }}
+          path: ./downloaded-binaries # Download to a temporary location
 
-      - name: Extract binaries
+      - name: Prepare Docker build context
         run: |
-          mkdir -p bin/release/linux-amd64
-          tar -xzf bin/release/groq-chat-linux-amd64.tar.gz -C bin/release/linux-amd64
-          ls -lh bin/release/linux-amd64/groq-chat
+          mkdir -p ./docker-context/ # Create a clean staging area for Docker
+          # Adjust this path based on EXACTLY how 'make release' organizes output
+          # Example: Assuming 'make release' creates bin/release/linux-amd64/groq-chat, bin/release/linux-arm64/groq-chat etc.
+          BINARY_PATH="./downloaded-binaries/linux-${{ matrix.arch }}/groq-chat"
+          # If 'make release' puts them directly in bin/release like groq-chat-linux-amd64
+          # BINARY_PATH="./downloaded-binaries/groq-chat-linux-${{ matrix.arch }}"
+
+          echo "Looking for binary at: ${BINARY_PATH}"
+          if [[ ! -f "${BINARY_PATH}" ]]; then
+            echo "Binary not found!"
+            echo "Files downloaded:"
+            ls -lR ./downloaded-binaries
+            exit 1
+          fi
+          cp "${BINARY_PATH}" ./docker-context/groq-chat
+          echo "Copied binary to ./docker-context/"
+          ls -l ./docker-context/
+
+          # Copy the correct Dockerfile to the context
+          cp "${{ matrix.dockerfile }}" ./docker-context/Dockerfile
+
+      # QEMU is needed for building ARM images on AMD64 runners and vice-versa
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -69,27 +145,53 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          ecr: auto
-          logout: true
+          # ecr: auto # Remove if not using AWS ECR
+          # logout: true # Logout is usually handled automatically by runner cleanup
 
-      - name: Build and push (Debian)
+      - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64
+          context: ./docker-context # Use the prepared context directory
+          file: ./docker-context/Dockerfile # Dockerfile is now inside the context
+          platforms: linux/${{ matrix.arch }} # Build for the specific architecture of this matrix job
           push: true
-          tags: |
-            OleksiyML/groq-cli-chat:${{ github.event.release.tag_name }}-debian
-            OleksiyML/groq-cli-chat:latest-debian
+          tags: | # Define the tags for the image
+            ${{ env.DOCKER_IMAGE_BASE }}:${{ steps.get_version.outputs.version }}-${{ matrix.distro }}-${{ matrix.arch }}
+            ${{ env.DOCKER_IMAGE_BASE }}:latest-${{ matrix.distro }}-${{ matrix.arch }}
+          # Optional: Enable provenance attestations (recommended)
+          attest: |
+            type=provenance,mode=max
+          # Optional: Cache Docker layers (helps speed up builds)
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Build and push (RHEL)
-        uses: docker/build-push-action@v6
+  # Job 3: Create GitHub Release and Upload Assets (only on release event)
+  create-github-release:
+    name: Create GitHub Release
+    if: github.event_name == 'release' && github.event.action == 'created'
+    needs: build # Depends on the build job
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Version from Needs
+        id: get_version
+        run: echo "version=${{ needs.build.outputs.version }}" >> $GITHUB_OUTPUT
+
+      - name: Download all binaries artifact
+        uses: actions/download-artifact@v4
         with:
-          context: .
-          file: ./Dockerfile-rhel
-          platforms: linux/amd64
-          push: true
-          tags: |
-            OleksiyML/groq-cli-chat:${{ github.event.release.tag_name }}-rhel
-            OleksiyML/groq-cli-chat:latest-rhel
+          name: binaries-${{ steps.get_version.outputs.version }}
+          path: ./release-assets # Download to a directory
+
+      - name: List downloaded assets # Verify contents
+        run: ls -lR ./release-assets
+
+      # Use softprops/action-gh-release to upload assets to the release
+      # This action automatically finds the release that triggered the workflow
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          # Body can describe the release (optional, often taken from release notes)
+          # body_path: CHANGELOG.md
+          files: | # List all files/archives to upload from the downloaded path
+            ./release-assets/** # Upload all downloaded files/directories
+          # Optional: fail_on_unmatched_files: true
