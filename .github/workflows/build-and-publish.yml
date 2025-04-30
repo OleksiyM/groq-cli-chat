@@ -141,4 +141,4 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
-          files: bin/release/flat/*
+          files: ./release-assets/flat/*
