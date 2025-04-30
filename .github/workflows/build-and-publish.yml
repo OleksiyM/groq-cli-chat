@@ -54,6 +54,18 @@ jobs:
           test -f Dockerfile-debian || (echo "Dockerfile-debian not found" && exit 1)
           test -f Dockerfile-rhel || (echo "Dockerfile-rhel not found" && exit 1)
 
+      - name: Download binaries artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: bin/release
+
+      - name: Extract binaries
+        run: |
+          mkdir -p bin/release/linux-amd64
+          tar -xzf bin/release/groq-chat-linux-amd64.tar.gz -C bin/release/linux-amd64
+          ls -lh bin/release/linux-amd64/groq-chat
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
