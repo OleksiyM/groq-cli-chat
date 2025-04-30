@@ -7,7 +7,6 @@ dist/
 *.dll
 *.so
 *.dylib
-go.sum
 
 # Editor and IDE files
 .vscode/
