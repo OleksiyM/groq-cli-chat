@@ -1,4 +1,4 @@
 ARG ARCH=amd64
 FROM gcr.io/distroless/static-debian12
-COPY ./bin/release/linux-${ARCH}/groq-chat .
+COPY ./groq-chat .
 CMD ["./groq-chat"]
