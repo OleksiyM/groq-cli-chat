@@ -1,5 +1,8 @@
 name: Build, Test, and Publish groq-cli-chat
 
+permissions:
+  contents: write  # Required for create-release job to upload assets
+
 on:
   push:
     branches:
@@ -29,7 +32,7 @@ jobs:
       - name: Build binaries
         run: make release
         env:
-          VERSION: 0.1.0
+          VERSION: ${{ github.event.release.tag_name || '0.1.0' }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -39,81 +42,64 @@ jobs:
           retention-days: 7
 
   publish-docker:
+    if: github.event_name == 'release' && github.event.action == 'created'
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' && github.event.action == 'created'
     steps:
-      - name: Checkout code
+      - name: Check out the repo
         uses: actions/checkout@v4
+
+      - name: Verify Dockerfiles exist
+        run: |
+          test -f Dockerfile-debian || (echo "Dockerfile-debian not found" && exit 1)
+          test -f Dockerfile-rhel || (echo "Dockerfile-rhel not found" && exit 1)
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Hub
+      - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+          ecr: auto
+          logout: true
 
-      - name: Build and push Debian image
+      - name: Build and push (Debian)
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile
+          file: ./Dockerfile-debian
           platforms: linux/amd64
           push: true
-          tags: |
-            OleksiyM/groq-cli-chat:${{ github.event.release.tag_name }}-debian
-            OleksiyM/groq-cli-chat:latest-debian
+          tags: OleksiyM/groq-cli-chat:${{ github.event.release.tag_name }}-debian
 
-      - name: Build and push RHEL image
+      - name: Build and push (RHEL)
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile.rhel
+          file: ./Dockerfile-rhel
           platforms: linux/amd64
           push: true
-          tags: |
-            OleksiyM/groq-cli-chat:${{ github.event.release.tag_name }}-rhel
-            OleksiyM/groq-cli-chat:latest-rhel
+          tags: OleksiyM/groq-cli-chat:${{ github.event.release.tag_name }}-rhel
 
   create-release:
+    if: github.event_name == 'release' && github.event.action == 'created'
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' && github.event.action == 'created'
     steps:
-      - name: Download build artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           name: binaries
-          path: bin/release
 
-      - name: Upload release assets
-        uses: actions/upload-release-asset@v1
+      - name: Upload artifacts to release
+        run: |
+          if ls *.zip *.tar.gz >/dev/null 2>&1; then
+            gh release upload ${{ github.event.release.tag_name }} *.zip *.tar.gz
+          else
+            echo "No .zip or .tar.gz files found to upload."
+            exit 1
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: bin/release/groq-chat-linux-amd64.tar.gz
-          asset_name: groq-chat-linux-amd64.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload release assets (Windows)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: bin/release/groq-chat-windows-amd64.zip
-          asset_name: groq-chat-windows-amd64.zip
-          asset_content_type: application/zip
-
-      - name: Upload release assets (macOS)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: bin/release/groq-chat-macos-amd64.tar.gz
-          asset_name: groq-chat-macos-amd64.tar.gz
-          asset_content_type: application/gzip
