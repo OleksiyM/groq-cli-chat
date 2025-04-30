@@ -24,12 +24,11 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Set up output file name
+      - name: Set output binary name
         run: |
-          BIN_NAME="${{ env.APP_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}"
           EXT=""
           if [ "${{ matrix.goos }}" = "windows" ]; then EXT=".exe"; fi
-          echo "BIN_NAME=${BIN_NAME}${EXT}" >> $GITHUB_ENV
+          echo "BIN_NAME=${{ env.APP_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}${EXT}" >> $GITHUB_ENV
 
       - name: Build binary
         run: |
@@ -41,12 +40,12 @@ jobs:
         run: |
           cd bin/release
           if [[ "${{ matrix.goos }}" == "windows" ]]; then
-            zip ${APP_NAME}-${{ matrix.goos }}-${{ matrix.goarch }}.zip ${{ env.BIN_NAME }}
+            zip "${{ env.APP_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}.zip" "${{ env.BIN_NAME }}"
           else
-            tar -czf ${APP_NAME}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz ${{ env.BIN_NAME }}
+            tar -czf "${{ env.APP_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz" "${{ env.BIN_NAME }}"
           fi
 
-      - name: Upload packaged binary as artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: binaries
@@ -64,10 +63,12 @@ jobs:
           name: binaries
           path: bin/release
 
-      - name: Upload all release assets
+      - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref }}
-          files: bin/release/*
+          files: |
+            bin/release/*.zip
+            bin/release/*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
