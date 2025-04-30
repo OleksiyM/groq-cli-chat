@@ -77,5 +77,11 @@ jobs:
         if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
         run: |
           IMAGE=OleksiyML/groq-chat:${{ steps.vars.outputs.version }}
-          docker build -t $IMAGE -f Dockerfile .
-          docker push $IMAGE
+          
+          if [ -f bin/release/linux-amd64/groq-chat ]; then
+            cp ./bin/release/linux-amd64/groq-chat .
+            docker build -t $IMAGE -f Dockerfile .
+            docker push $IMAGE
+          else
+            echo "Binary not found, skipping Docker build"
+          fi
