@@ -14,32 +14,45 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Check out the repo
         uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.1'
+          go-version: '1.21'
 
-      - name: Install dependencies
-        run: go mod tidy
+      - name: Build for Linux (AMD64)
+        run: |
+          mkdir -p bin/release/linux-amd64
+          GOOS=linux GOARCH=amd64 go build -o bin/release/linux-amd64/groq-chat
+          tar -czf bin/release/groq-chat-linux-amd64.tar.gz -C bin/release/linux-amd64 groq-chat
 
-      - name: Run tests
-        run: go test ./... -v
-        continue-on-error: true # Allow workflow to proceed if no tests exist
+      - name: Build for Linux (ARM64)
+        run: |
+          mkdir -p bin/release/linux-arm64
+          GOOS=linux GOARCH=arm64 go build -o bin/release/linux-arm64/groq-chat
+          tar -czf bin/release/groq-chat-linux-arm64.tar.gz -C bin/release/linux-arm64 groq-chat
 
-      - name: Build binaries
-        run: make release
-        env:
-          VERSION: ${{ github.event.release.tag_name || '0.1.0' }}
+      - name: Build for macOS (AMD64)
+        run: |
+          mkdir -p bin/release/macos-amd64
+          GOOS=darwin GOARCH=amd64 go build -o bin/release/macos-amd64/groq-chat
+          tar -czf bin/release/groq-chat-macos-amd64.tar.gz -C bin/release/macos-amd64 groq-chat
 
-      - name: Upload build artifacts
+      - name: Build for Windows (AMD64)
+        run: |
+          mkdir -p bin/release/windows-amd64
+          GOOS=windows GOARCH=amd64 go build -o bin/release/windows-amd64/groq-chat.exe
+          zip -j bin/release/groq-chat-windows-amd64.zip bin/release/windows-amd64/groq-chat.exe
+
+      - name: Upload binaries artifact
         uses: actions/upload-artifact@v4
         with:
           name: binaries
-          path: bin/release/*
-          retention-days: 7
+          path: |
+            bin/release/*.tar.gz
+            bin/release/*.zip
 
   publish-docker:
     if: github.event_name == 'release' && github.event.action == 'created'
@@ -59,7 +72,13 @@ jobs:
         run: |
           mkdir -p bin/release/linux-amd64
           tar -xzf bin/release/groq-chat-linux-amd64.tar.gz -C bin/release/linux-amd64
+          mkdir -p bin/release/linux-arm64
+          tar -xzf bin/release/groq-chat-linux-arm64.tar.gz -C bin/release/linux-arm64
           ls -lh bin/release/linux-amd64/groq-chat
+          ls -lh bin/release/linux-arm64/groq-chat
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -77,19 +96,67 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            OleksiyML/groq-cli-chat:${{ github.event.release.tag_name }}-debian
-            OleksiyML/groq-cli-chat:latest-debian
+            OleksiyM/groq-cli-chat:${{ github.event.release.tag_name }}-debian
+            OleksiyM/groq-cli-chat:latest-debian
+          build-args: |
+            ARCH=amd64
+            ARCH=arm64
 
       - name: Build and push (RHEL)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile-rhel
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            OleksiyML/groq-cli-chat:${{ github.event.release.tag_name }}-rhel
-            OleksiyML/groq-cli-chat:latest-rhel
+            OleksiyM/groq-cli-chat:${{ github.event.release.tag_name }}-rhel
+            OleksiyM/groq-cli-chat:latest-rhel
+          build-args: |
+            ARCH=amd64
+            ARCH=arm64
+
+  create-release:
+    if: github.event_name == 'release' && github.event.action == 'created'
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download binaries artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: bin/release
+
+      - name: Upload release assets
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const github = require('@actions/github');
+            const context = github.context;
+            
+            const release_id = context.payload.release.id;
+            const token = process.env.GITHUB_TOKEN;
+            
+            const octokit = github.getOctokit(token);
+            
+            const files = [
+              'bin/release/groq-chat-linux-amd64.tar.gz',
+              'bin/release/groq-chat-linux-arm64.tar.gz',
+              'bin/release/groq-chat-macos-amd64.tar.gz',
+              'bin/release/groq-chat-windows-amd64.zip'
+            ];
+            
+            for (const file of files) {
+              const fileName = file.split('/').pop();
+              await octokit.rest.repos.uploadReleaseAsset({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release_id,
+                name: fileName,
+                data: fs.readFileSync(file),
+              });
+            }
