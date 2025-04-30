@@ -22,28 +22,36 @@ jobs:
         with:
           go-version: '1.21'
 
+      - name: Debug directory structure
+        run: |
+          ls -R
+
+      - name: Run tests
+        run: |
+          go test ./... -v
+
       - name: Build for Linux (AMD64)
         run: |
           mkdir -p bin/release/linux-amd64
-          GOOS=linux GOARCH=amd64 go build -o bin/release/linux-amd64/groq-chat
+          GOOS=linux GOARCH=amd64 go build -o bin/release/linux-amd64/groq-chat ./cmd/groq-chat
           tar -czf bin/release/groq-chat-linux-amd64.tar.gz -C bin/release/linux-amd64 groq-chat
 
       - name: Build for Linux (ARM64)
         run: |
           mkdir -p bin/release/linux-arm64
-          GOOS=linux GOARCH=arm64 go build -o bin/release/linux-arm64/groq-chat
+          GOOS=linux GOARCH=arm64 go build -o bin/release/linux-arm64/groq-chat ./cmd/groq-chat
           tar -czf bin/release/groq-chat-linux-arm64.tar.gz -C bin/release/linux-arm64 groq-chat
 
       - name: Build for macOS (AMD64)
         run: |
           mkdir -p bin/release/macos-amd64
-          GOOS=darwin GOARCH=amd64 go build -o bin/release/macos-amd64/groq-chat
+          GOOS=darwin GOARCH=amd64 go build -o bin/release/macos-amd64/groq-chat ./cmd/groq-chat
           tar -czf bin/release/groq-chat-macos-amd64.tar.gz -C bin/release/macos-amd64 groq-chat
 
       - name: Build for Windows (AMD64)
         run: |
           mkdir -p bin/release/windows-amd64
-          GOOS=windows GOARCH=amd64 go build -o bin/release/windows-amd64/groq-chat.exe
+          GOOS=windows GOARCH=amd64 go build -o bin/release/windows-amd64/groq-chat.exe ./cmd/groq-chat
           zip -j bin/release/groq-chat-windows-amd64.zip bin/release/windows-amd64/groq-chat.exe
 
       - name: Upload binaries artifact
