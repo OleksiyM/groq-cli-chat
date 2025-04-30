@@ -16,9 +16,9 @@ env:
   # Set the Go version to use
   GO_VERSION: '1.24.1'
   # Set your Docker Hub username (or GHCR path like ghcr.io/YourUsername)
-  DOCKER_USERNAME: OleksiyML
+  # DOCKER_USERNAME: OleksiyML
   # Base name for the Docker image
-  DOCKER_IMAGE_BASE: ${{ secrets.DOCKERHUB_USERNAME || env.DOCKER_USERNAME }}/groq-cli-chat
+  DOCKER_IMAGE_BASE: ${{ secrets.DOCKERHUB_USERNAME }}/groq-cli-chat
 
 jobs:
   # Job 1: Build binaries for all platforms and run tests
@@ -158,10 +158,6 @@ jobs:
           tags: | # Define the tags for the image
             ${{ env.DOCKER_IMAGE_BASE }}:${{ steps.get_version.outputs.version }}-${{ matrix.distro }}-${{ matrix.arch }}
             ${{ env.DOCKER_IMAGE_BASE }}:latest-${{ matrix.distro }}-${{ matrix.arch }}
-          # Optional: Enable provenance attestations (recommended)
-          attest: |
-            type=provenance,mode=max
-          # Optional: Cache Docker layers (helps speed up builds)
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
