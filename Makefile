@@ -8,7 +8,8 @@ RELEASE_DIR := bin/release
 FLAT_DIR := $(RELEASE_DIR)/flat
 
 # Version number
-VERSION = 0.1.0
+# VERSION = 0.1.0
+VERSION ?= $(shell git describe --tags --always --dirty)
 
 # Command prefix for silent/verbose builds (use VERBOSE=1 for verbose output)
 V = @
