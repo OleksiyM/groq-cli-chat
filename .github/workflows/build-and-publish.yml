@@ -49,11 +49,6 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v4
 
-      - name: Verify Dockerfiles exist
-        run: |
-          test -f Dockerfile-debian || (echo "Dockerfile-debian not found" && exit 1)
-          test -f Dockerfile-rhel || (echo "Dockerfile-rhel not found" && exit 1)
-
       - name: Download binaries artifact
         uses: actions/download-artifact@v4
         with:
@@ -81,10 +76,12 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile-debian
+          file: ./Dockerfile
           platforms: linux/amd64
           push: true
-          tags: OleksiyM/groq-cli-chat:${{ github.event.release.tag_name }}-debian
+          tags: |
+            OleksiyML/groq-cli-chat:${{ github.event.release.tag_name }}-debian
+            OleksiyML/groq-cli-chat:latest-debian
 
       - name: Build and push (RHEL)
         uses: docker/build-push-action@v6
@@ -93,25 +90,6 @@ jobs:
           file: ./Dockerfile-rhel
           platforms: linux/amd64
           push: true
-          tags: OleksiyM/groq-cli-chat:${{ github.event.release.tag_name }}-rhel
-
-  create-release:
-    if: github.event_name == 'release' && github.event.action == 'created'
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: binaries
-
-      - name: Upload artifacts to release
-        run: |
-          if ls *.zip *.tar.gz >/dev/null 2>&1; then
-            gh release upload ${{ github.event.release.tag_name }} *.zip *.tar.gz
-          else
-            echo "No .zip or .tar.gz files found to upload."
-            exit 1
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tags: |
+            OleksiyML/groq-cli-chat:${{ github.event.release.tag_name }}-rhel
+            OleksiyML/groq-cli-chat:latest-rhel
