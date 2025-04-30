@@ -160,6 +160,7 @@ docker run --rm -it -e GROQ_API_KEY=$GROQ_API_KEY -v $HOME/.groq-chat:/root/.gro
 - [ ] **May be** Enhance UI with ANSI colors for better readability.
 - [ ] **May be** Support additional platforms and distributions.
 - [ ] **May be** Restore advanced command-line flags (e.g., custom config paths).
+- [ ] **May be** Add test
 
 ## Contributing
 Contributions are welcome! Stay tuned for the GitHub repository to submit issues, feature requests, or pull requests.

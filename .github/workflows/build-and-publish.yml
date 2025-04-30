@@ -1,0 +1,119 @@
+name: Build, Test, and Publish groq-cli-chat
+
+on:
+  push:
+    branches:
+      - main
+  release:
+    types: [created]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.1'
+
+      - name: Install dependencies
+        run: go mod tidy
+
+      - name: Run tests
+        run: go test ./... -v
+        continue-on-error: true # Allow workflow to proceed if no tests exist
+
+      - name: Build binaries
+        run: make release
+        env:
+          VERSION: 0.1.0
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: bin/release/*
+          retention-days: 7
+
+  publish-docker:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'created'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Debian image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            OleksiyM/groq-cli-chat:${{ github.event.release.tag_name }}-debian
+            OleksiyM/groq-cli-chat:latest-debian
+
+      - name: Build and push RHEL image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.rhel
+          platforms: linux/amd64
+          push: true
+          tags: |
+            OleksiyM/groq-cli-chat:${{ github.event.release.tag_name }}-rhel
+            OleksiyM/groq-cli-chat:latest-rhel
+
+  create-release:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'created'
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: bin/release
+
+      - name: Upload release assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: bin/release/groq-chat-linux-amd64.tar.gz
+          asset_name: groq-chat-linux-amd64.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Upload release assets (Windows)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: bin/release/groq-chat-windows-amd64.zip
+          asset_name: groq-chat-windows-amd64.zip
+          asset_content_type: application/zip
+
+      - name: Upload release assets (macOS)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: bin/release/groq-chat-macos-amd64.tar.gz
+          asset_name: groq-chat-macos-amd64.tar.gz
+          asset_content_type: application/gzip
