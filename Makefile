@@ -4,6 +4,9 @@
 # Binary name as a variable
 APP_NAME = groq-chat
 
+RELEASE_DIR := bin/release
+FLAT_DIR := $(RELEASE_DIR)/flat
+
 # Version number
 VERSION = 0.1.0
 
@@ -38,7 +41,9 @@ deps:
 	$(V)go mod tidy
 	$(V)go mod download
 
-release: deps
+release: clean release-artifacts release-flatten
+
+release-artifacts: deps
 	$(V)mkdir -p bin/release/linux-amd64 bin/release/linux-arm64 bin/release/macos-amd64 bin/release/macos-arm64 bin/release/windows-amd64 bin/release/windows-arm64
 	$(V)CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X main.version=$(VERSION)" -o bin/release/linux-amd64/$(APP_NAME) ./cmd/groq-cli-chat
 	$(V)CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags "-s -w -X main.version=$(VERSION)" -o bin/release/linux-arm64/$(APP_NAME) ./cmd/groq-cli-chat
@@ -46,11 +51,21 @@ release: deps
 	$(V)CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w -X main.version=$(VERSION)" -o bin/release/macos-arm64/$(APP_NAME) ./cmd/groq-cli-chat
 	$(V)CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "-s -w -X main.version=$(VERSION)" -o bin/release/windows-amd64/$(APP_NAME).exe ./cmd/groq-cli-chat
 	$(V)CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -ldflags "-s -w -X main.version=$(VERSION)" -o bin/release/windows-arm64/$(APP_NAME).exe ./cmd/groq-cli-chat
-# UPX disabled due to lack of official v5 binary for macOS; uncomment to enable
-#	$(V)command -v upx >/dev/null && upx --best bin/release/*/$(APP_NAME)* || echo "UPX not found, skipping compression for release"
+
 	$(V)tar -czf bin/release/$(APP_NAME)-linux-amd64.tar.gz -C bin/release/linux-amd64 $(APP_NAME)
 	$(V)tar -czf bin/release/$(APP_NAME)-linux-arm64.tar.gz -C bin/release/linux-arm64 $(APP_NAME)
 	$(V)tar -czf bin/release/$(APP_NAME)-macos-amd64.tar.gz -C bin/release/macos-amd64 $(APP_NAME)
 	$(V)tar -czf bin/release/$(APP_NAME)-macos-arm64.tar.gz -C bin/release/macos-arm64 $(APP_NAME)
-	$(V)cd bin/release/windows-amd64 && zip -q ../$(APP_NAME)-windows-amd64.zip $(APP_NAME).exe || echo "zip command failed, ensure zip is installed"
-	$(V)cd bin/release/windows-arm64 && zip -q ../$(APP_NAME)-windows-arm64.zip $(APP_NAME).exe || echo "zip command failed, ensure zip is installed"
+
+	$(V)cd bin/release/windows-amd64 && zip -q ../$(APP_NAME)-windows-amd64.zip $(APP_NAME).exe || echo "zip command failed"
+	$(V)cd bin/release/windows-arm64 && zip -q ../$(APP_NAME)-windows-arm64.zip $(APP_NAME).exe || echo "zip command failed"
+
+release-flatten:
+	$(V)mkdir -p $(FLAT_DIR)
+	@echo "Flattening and renaming release artifacts..."
+	@for file in $(RELEASE_DIR)/$(APP_NAME)-* ; do \
+		[ -f "$$file" ] || continue ; \
+		platform_arch_ext=$$(echo "$${file##*/}" | sed -E 's/^$(APP_NAME)-//') ; \
+		cp "$$file" "$(FLAT_DIR)/$$platform_arch_ext" ; \
+		echo "Copied: $$file -> $(FLAT_DIR)/$$platform_arch_ext" ; \
+	done
