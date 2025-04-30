@@ -6,74 +6,68 @@ on:
       - 'v*.*.*'
 
 env:
-  IMAGE_NAME: OleksiyML/groq-chat
+  APP_NAME: groq-chat
   GO_VERSION: '1.24.1'
+  IMAGE_NAME: oleksiyml/groq-chat
 
 jobs:
   build:
-    name: Build and Publish Release
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
         goos: [linux, windows, darwin]
-        goarch: [amd64, arm64]
-        exclude:
-          - goos: darwin
-            goarch: arm64  #  macOS ARM
+        goarch: [amd64]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Go ${{ env.GO_VERSION }}
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Set up variables
-        id: vars
+      - name: Set up output file name
         run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "RELEASE_NAME=${{ matrix.goos }}-${{ matrix.goarch }}" >> $GITHUB_ENV
-          echo "BIN_NAME=mychatapp-${{ matrix.goos }}-${{ matrix.goarch }}" >> $GITHUB_ENV
+          BIN_NAME="${{ env.APP_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}"
+          EXT=""
+          if [ "${{ matrix.goos }}" = "windows" ]; then EXT=".exe"; fi
+          echo "BIN_NAME=${BIN_NAME}${EXT}" >> $GITHUB_ENV
 
       - name: Build binary
         run: |
-          mkdir -p dist
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o dist/${BIN_NAME} ./cmd/mychatapp
+          mkdir -p bin/release
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+          go build -o bin/release/${{ env.BIN_NAME }} ./cmd/groq-chat
 
-      - name: Upload release asset
+      - name: Package binary
+        run: |
+          cd bin/release
+          if [[ "${{ matrix.goos }}" == "windows" ]]; then
+            zip ${APP_NAME}-${{ matrix.goos }}-${{ matrix.goarch }}.zip ${{ env.BIN_NAME }}
+          else
+            tar -czf ${APP_NAME}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz ${{ env.BIN_NAME }}
+          fi
+
+      - name: Upload packaged binary as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: |
+            bin/release/*.zip
+            bin/release/*.tar.gz
+
+  upload:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: bin/release
+
+      - name: Upload all release assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref }}
-          name: Release ${{ env.VERSION }}
-          files: dist/${{ env.BIN_NAME }}
+          files: bin/release/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  docker:
-    name: Build and Push Docker Image
-    runs-on: ubuntu-latest
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/')
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Log in to DockerHub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Extract version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-
-      - name: Build Docker image
-        run: docker build -t $IMAGE_NAME:latest -t $IMAGE_NAME:${VERSION} .
-
-      - name: Push Docker image
-        run: |
-          docker push $IMAGE_NAME:latest
-          docker push $IMAGE_NAME:${VERSION}
