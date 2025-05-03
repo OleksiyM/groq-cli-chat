@@ -41,7 +41,7 @@ func ListChatHistory() error {
 	}
 
 	sort.Strings(historyFiles)
-	fmt.Println("Chat History:")
+	fmt.Println("────────┤ Chat History ├─────────")
 	for i, file := range historyFiles {
 		timestamp := strings.TrimPrefix(strings.TrimSuffix(file, ".md"), "chat_")
 		parsedTime, _ := time.Parse("20060102_150405", timestamp)
