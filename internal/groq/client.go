@@ -67,7 +67,11 @@ func (c *Client) GetModel(model string) (*ModelInfo, error) {
 	return &modelInfo, nil
 }
 
+// Chat sends a chat request to the Groq API
 func (c *Client) Chat(model, message string) (*ChatResponse, error) {
+	// Start timing the request
+	startTime := time.Now()
+
 	payload := map[string]interface{}{
 		"model":    model,
 		"messages": []map[string]string{{"role": "user", "content": message}},
@@ -83,9 +87,28 @@ func (c *Client) Chat(model, message string) (*ChatResponse, error) {
 	}
 	defer resp.Body.Close()
 
+	// Read the entire response body
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %v", err)
+	}
+
+	// Debug print
+	// fmt.Printf("DEBUG - Raw API response: %s\n", string(bodyBytes))
+
 	var chatResp ChatResponse
-	if err := json.NewDecoder(resp.Body).Decode(&chatResp); err != nil {
+	if err := json.Unmarshal(bodyBytes, &chatResp); err != nil {
 		return nil, fmt.Errorf(resources.ErrDecodeResponse, err)
+	}
+
+	// Verify that we have a valid response with content
+	if len(chatResp.Choices) == 0 || chatResp.Choices[0].Message.Content == "" {
+		return nil, fmt.Errorf("received empty response from API")
+	}
+
+	// Calculate elapsed time if not provided by the API
+	if chatResp.Usage.CompletionTime <= 0 {
+		chatResp.Usage.CompletionTime = time.Since(startTime).Seconds()
 	}
 
 	return &chatResp, nil
