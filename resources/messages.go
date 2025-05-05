@@ -1,8 +1,10 @@
 package resources
 
 const (
+	MenuOptions = "[i]nfo | select [m]odel | [u]pdate models | [h]istory | change [c]onfig | [q]uit"
 	WelcomeMessage = `🍎 One-shot Groq CLI chat
-[i]nfo | select [m]odel | [h]istory | [q]uit
+` + MenuOptions + `
+
 `
 
 	Prompt           = "[%s] > "
@@ -43,7 +45,7 @@ Select model (0-%d): `
 	ErrCreateConfig        = "failed to create default config: %v"
 	ErrReadConfig          = "failed to read config: %v"
 	ErrUnmarshalConfig     = "failed to unmarshal config: %v"
-	ErrNoAPIKey            = "GROQ_API_KEY environment variable not set"
+	ErrNoAPIKey            = "API key environment variable not set"
 	ErrWriteConfig         = "failed to write config: %v"
 	ErrCreateClient        = "failed to create Groq client: %v"
 	ErrListModels          = "failed to list models: %v"
