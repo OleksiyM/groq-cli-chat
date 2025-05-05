@@ -74,7 +74,7 @@ After that you will see:
 ```
 
 ### Interactive commands:
-```text
+
 - `[i]` — Show current model info
 - `[m]` — Switch model (up to 20 shown)
 - `[u]` — Update models list from the current provider. Excluded models (part of the names) can be configured in `config_<provider>.yaml` (see below)
@@ -82,9 +82,9 @@ After that you will see:
 - `[c]` — Change config (it should be previously saved in `config_<provider>.yaml`)
 - `[q]` — Quit
 
-```
-
-### Examples of one-shot prompts:
+### One-shot prompts 
+<details>
+  <summary>Examples of good one-shot prompts</summary>
 
 **Example 1:**
 ```text
@@ -119,8 +119,9 @@ You are a Linux user. Summarize how to use `grep` and `awk` together to extract 
 **Example 7:**
 ```text
 You are a system administrator. Describe the steps to automate backups using `rsync` and cron jobs in 200-300 words.
-
 ```
+</details>
+
 > Remember: Each prompt must be fully self-contained.
 
 After receiving a response, you'll see statistics in the format:
@@ -173,11 +174,12 @@ provider_name: Groq
 - You can exclude some models from the list when updating. Each line is part of the excluded model(s) name
 - You can create your own config file and use it with `[c]` command. (see below)
 
-### Custopm providers configurations
+### Custom providers configurations
 
-**Examples of config files**
+<details>
+  <summary>Examples of config files</summary>
 
-### xAI (Grok)
+#### xAI (Grok)
 
 **config_grok.yaml**
 ```yaml
@@ -194,7 +196,7 @@ models:
 provider_name: Grok
 ```
 
-### OpenAI
+#### OpenAI
 
 **config_openai.yaml**
 ```yaml
@@ -211,7 +213,7 @@ models:
     - gpt-4.1
 provider_name: OpenAI
 ```
-### OpenRouter
+#### OpenRouter
 
 **config_openrouter.yaml**
 ```yaml
@@ -232,6 +234,8 @@ models:
     - qwen/qwen3-235b-a22b:free
 provider_name: OpenRouter
 ```
+</details>
+
 
 - Use `api_key_name` as env variable.
 
@@ -337,4 +341,4 @@ Contributions, ideas, and bug reports are welcome. Stay tuned for issue template
 
 ---
 
-*Made with ❤️ for hackers, devs, and prompt-crafters.*
+*Made with ❤️ for hackers, devs, DevOps, SysAdmins and prompt-crafters.*
