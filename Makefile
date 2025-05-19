@@ -8,8 +8,8 @@ RELEASE_DIR := bin/release
 FLAT_DIR := $(RELEASE_DIR)/flat
 
 # Version number
-# VERSION = 0.1.0
-VERSION ?= $(shell git describe --tags --always --dirty)
+VERSION = v1.0.0
+#VERSION ?= $(shell git describe --tags --always --dirty)
 
 # Command prefix for silent/verbose builds (use VERBOSE=1 for verbose output)
 V = @
@@ -70,3 +70,16 @@ release-flatten:
 		cp "$$file" "$(FLAT_DIR)/$$platform_arch_ext" ; \
 		echo "Copied: $$file -> $(FLAT_DIR)/$$platform_arch_ext" ; \
 	done
+
+# Docker image name and tag
+DOCKER_REPO = oleksiyml/groq-chat
+#TAG = v$(VERSION)
+TAG = $(VERSION)
+
+docker-multiarch:
+	docker buildx build \
+		--platform linux/amd64,linux/arm64 \
+		-t $(DOCKER_REPO):$(TAG) \
+		-t $(DOCKER_REPO):latest \
+		--file Dockerfile.multiarch \
+		--push .
