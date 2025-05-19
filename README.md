@@ -1,6 +1,6 @@
 # groq-chat
 
-**groq-chat** is a minimalistic, high-performance command-line interface (CLI) for interacting with Groq AI models. Written in Go, it provides a fast, resource-efficient one-shot chat experience ideal for developers and AI enthusiasts.
+**groq-chat** is a minimalistic, high-performance command-line interface (CLI) for interacting with Groq AI and other OpenAI compartible models. Written in Go, it provides a fast, resource-efficient one-shot chat experience ideal for developers and AI enthusiasts.
 
 - **Tiny Memory usage**: 11–14MB
 - **Small Docker image size**: \~9–11MB
@@ -38,6 +38,11 @@
    ```
 
 ### 🐳 Run via Docker
+
+- **Pull the latest image**
+```bash
+docker pull oleksiyml/groq-chat
+```
 
 - **Provide GROQ_API_KEY as an value**
 ```bash
@@ -173,6 +178,26 @@ provider_name: Groq
 - Models list will be updated automatically via `[u]` command. 
 - You can exclude some models from the list when updating. Each line is part of the excluded model(s) name
 - You can create your own config file and use it with `[c]` command. (see below)
+
+> **Note**: You can save all your API keys in the `~/.zshrc` or `~/.bashrc` file. 
+> ```bash
+> export GROQ_API_KEY=your_api_key
+> export OPENAI_API_KEY=your_api_key
+> export OPENROUTER_API_KEY=your_api_key
+> export XAI_API_KEY=your_api_key
+> ```
+> 
+> after that run 
+> ```bash
+> source ~/.zshrc
+> ``` 
+> or 
+> ```bash
+> source ~/bashrc
+> ```
+> to apply changes. 
+
+---
 
 ### Custom providers configurations
 
