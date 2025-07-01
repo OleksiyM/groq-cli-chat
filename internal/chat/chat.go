@@ -14,8 +14,15 @@ import (
 )
 
 func Run(cfg *config.Config) {
-	// Only use the welcome message from resources
-	fmt.Println(resources.WelcomeMessage)
+	// Display app title from config
+	fmt.Println(cfg.AppTitle)
+	
+	// Display menu with history status
+	historyStatus := "Off"
+	if cfg.SaveHistory {
+		historyStatus = "On"
+	}
+	fmt.Printf(resources.MenuOptions+"\n\n", historyStatus)
 
 	client, err := groq.NewClient(cfg.BaseURL, cfg.APIKey)
 	if err != nil {
@@ -69,9 +76,29 @@ func Run(cfg *config.Config) {
 			}
 		
 		case "h":
+			// Display chat history
 			if err := ListChatHistory(); err != nil {
 				fmt.Fprintf(os.Stderr, resources.ErrReadHistoryDir, err)
 				fmt.Println() // Add a blank line
+			}
+			
+		case "s":
+			// Toggle save_history setting
+			cfg.SaveHistory = !cfg.SaveHistory
+			
+			// Update the config file
+			if err := config.SaveConfig(cfg, cfg.ConfigPath); err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to save configuration: %v\n", err)
+			} else {
+				historyStatus := "Off"
+				if cfg.SaveHistory {
+					historyStatus = "On"
+				}
+				fmt.Printf("History saving is now %s\n", historyStatus)
+				
+				// Update the menu display
+				fmt.Printf("%s\n", cfg.AppTitle)
+				fmt.Printf(resources.MenuOptions+"\n\n", historyStatus)
 			}
 		
 		case "u":
@@ -126,9 +153,12 @@ func Run(cfg *config.Config) {
 			tokensPerSecond)
 		fmt.Println() // Add a blank line after stats
 		
-		if err := saveChatHistory(input, resp, currentModel); err != nil {
-			fmt.Fprintf(os.Stderr, resources.ErrSaveHistory, err)
-			fmt.Println() // Add a blank line
+		// Only save chat history if SaveHistory is enabled
+		if cfg.SaveHistory {
+			if err := saveChatHistory(input, resp, currentModel); err != nil {
+				fmt.Fprintf(os.Stderr, resources.ErrSaveHistory, err)
+				fmt.Println() // Add a blank line
+			}
 		}
 		}
 		}
@@ -303,6 +333,14 @@ func updateModels(cfg *config.Config, client *groq.Client) error {
 		}
 		
 		fmt.Println("Models list updated successfully!")
+		
+		// Display the app title and menu with updated history status
+		fmt.Println("\n" + cfg.AppTitle)
+		historyStatus := "Off"
+		if cfg.SaveHistory {
+			historyStatus = "On"
+		}
+		fmt.Printf(resources.MenuOptions+"\n\n", historyStatus)
 	} else {
 		fmt.Println("Update cancelled. Models list remains unchanged.")
 	}
@@ -445,8 +483,13 @@ func changeConfig(cfg *config.Config, client *groq.Client) error {
 	
 	// Display the app title from the new configuration
 	fmt.Println("\n" + cfg.AppTitle)
-	fmt.Println(resources.MenuOptions)
-	fmt.Println() // Add a blank line after menu options
+	
+	// Display menu with history status
+	historyStatus := "Off"
+	if cfg.SaveHistory {
+		historyStatus = "On"
+	}
+	fmt.Printf(resources.MenuOptions+"\n\n", historyStatus)
 	
 	return nil
 }

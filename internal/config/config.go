@@ -20,6 +20,7 @@ type Config struct {
 	DefaultModel  string   `mapstructure:"default_model"`
 	Models        []string `mapstructure:"models"`
 	ExcludedModels []string `mapstructure:"excluded_models"`
+	SaveHistory   bool     `mapstructure:"save_history"`
 	APIKey        string   `mapstructure:"api_key"`
 	ConfigPath    string   // Path to the loaded config file (not stored in YAML)
 }
@@ -87,6 +88,9 @@ func LoadConfig() (*Config, error) {
 		cfg.ExcludedModels = defaultExcludedModels
 	}
 
+	// Validate save_history field (must be true or false)
+	// No need for explicit validation as bool type can only be true or false
+
 	return cfg, nil
 }
 
@@ -144,6 +148,7 @@ func createDefaultConfig(configDir string) (*Config, error) {
 		DefaultModel:  filteredModels[0],
 		Models:        filteredModels,
 		ExcludedModels: excludedModelsList,
+		SaveHistory:   false,
 		ConfigPath:    configPath,
 	}
 
@@ -154,6 +159,7 @@ func createDefaultConfig(configDir string) (*Config, error) {
 	viper.Set("excluded_models", cfg.ExcludedModels)
 	viper.Set("default_model", cfg.DefaultModel)
 	viper.Set("models", cfg.Models)
+	viper.Set("save_history", cfg.SaveHistory)
 
 	if err := viper.WriteConfigAs(configPath); err != nil {
 		return nil, fmt.Errorf(resources.ErrWriteConfig, err)
@@ -172,6 +178,7 @@ func SaveConfig(cfg *Config, configPath string) error {
 	viper.Set("excluded_models", cfg.ExcludedModels)
 	viper.Set("default_model", cfg.DefaultModel)
 	viper.Set("models", cfg.Models)
+	viper.Set("save_history", cfg.SaveHistory)
 
 	// Write the config to file
 	if err := viper.WriteConfigAs(configPath); err != nil {
@@ -223,6 +230,9 @@ func LoadSpecificConfig(configPath string) (*Config, error) {
 	if len(cfg.ExcludedModels) == 0 {
 		cfg.ExcludedModels = defaultExcludedModels
 	}
+	
+	// Validate save_history field (must be true or false)
+	// No need for explicit validation as bool type can only be true or false
 	
 	return cfg, nil
 }

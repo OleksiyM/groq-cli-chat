@@ -73,10 +73,11 @@ groq-chat
 After that you will see:
 ```txt
 🍎 One-shot Groq CLI chat
-[i]nfo | select [m]odel | [u]pdate models | [h]istory | change [c]onfig | [q]uit
+[i]nfo | [m]odel | [u]pdate | [h]istory ([s]ave:%s) | [c]onfig | [q]uit
 
 [model_name] >
 ```
+The %s placeholder allows for dynamic display of the history saving status (On/Off).
 
 ### Interactive commands:
 
@@ -84,6 +85,7 @@ After that you will see:
 - `[m]` — Switch model (up to 20 shown)
 - `[u]` — Update models list from the current provider. Excluded models (part of the names) can be configured in `config_<provider>.yaml` (see below)
 - `[h]` — Show history - list of the saved answers in Markdown format
+- `[s]` — Toggle history saving (On/Off)
 - `[c]` — Change config (it should be previously saved in `config_<provider>.yaml`)
 - `[q]` — Quit
 
@@ -163,14 +165,18 @@ models:
     - gemma2-9b-it
     - llama-3.1-8b-instant
     - llama-3.3-70b-versatile
-    - llama-guard-3-8b
     - llama3-70b-8192
     - llama3-8b-8192
     - meta-llama/llama-4-maverick-17b-128e-instruct
     - meta-llama/llama-4-scout-17b-16e-instruct
+    - meta-llama/llama-guard-4-12b
+    - meta-llama/llama-prompt-guard-2-22m
+    - meta-llama/llama-prompt-guard-2-86m
     - mistral-saba-24b
     - qwen-qwq-32b
+    - qwen/qwen3-32b
 provider_name: Groq
+save_history: false
 ```
 
 - Use `GROQ_API_KEY` as env variable.
@@ -211,14 +217,15 @@ provider_name: Groq
 api_key_name: XAI_API_KEY
 app_title: "\U0001F680 One-shot Grok-3 CLI chat"
 base_url: https://api.x.ai/v1
-default_model: grok-3-mini-beta
+default_model: grok-3-mini
 excluded_models:
     - fast
     - playai
 models:
-    - grok-3-beta
-    - grok-3-mini-beta
+    - grok-3
+    - grok-3-mini
 provider_name: Grok
+save_history: false
 ```
 
 #### OpenAI
@@ -231,12 +238,12 @@ base_url: https://api.openai.com
 default_model: gpt-4.1-mini
 excluded_models:
     - fast
-    - playai
-    - llama
+    - 3.5
 models:
     - gpt-4.1-mini
     - gpt-4.1
 provider_name: OpenAI
+save_history: false
 ```
 #### OpenRouter
 
@@ -248,8 +255,7 @@ base_url: https://openrouter.ai/api/v1
 default_model: nvidia/llama-3.3-nemotron-super-49b-v1:free
 excluded_models:
     - fast
-    - playai
-    - llama
+    - -3.1
 models:
     - deepseek/deepseek-chat-v3-0324:free
     - deepseek/deepseek-v3-base:free
@@ -258,6 +264,7 @@ models:
     - nvidia/llama-3.3-nemotron-super-49b-v1:free
     - qwen/qwen3-235b-a22b:free
 provider_name: OpenRouter
+save_history: false
 ```
 </details>
 
@@ -267,7 +274,7 @@ provider_name: OpenRouter
 ## Chat history
 
 - The chat history is saved as Markdown files in `~/.groq-chat/history/`. Each chat is a separate file, named after the timestamp of the chat creation.
-- It can be viewed in any Markdown viewer.
+- It can be viewed in any Markdown viewer, `nano` recommended.
 - You can delete them manually
 
 ---
@@ -320,7 +327,7 @@ README.md       # This file
 - Clean, interactive CLI
 - Configurable via YAML and env vars
 - Secure (no API key in source)
-- Chat history in Markdown
+- Chat history in Markdown (optional, configured in the `settings.yaml`)
 - Blasing fast
 - Crossplatform (Linux, macOS, Windows)
 - Response statistics (tokens, time, tokens/sec)
@@ -339,6 +346,8 @@ README.md       # This file
   - [x]	GitHub Actions: automatic build and release publishing
   - [x]	Response statistics (tokens, time, tokens/sec)
   - [x]	Support for multiple AI providers (OpenAI-compatible APIs)
+  - [x]	Add toggle for save history to `settings.yaml`
+  - [x] Add menu command for tooggle save history
   - [ ]	CI: add unit tests and run go test in GitHub Actions
   - [ ]	Multi-turn chat support
   - [ ]	ANSI color output

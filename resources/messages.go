@@ -1,11 +1,8 @@
 package resources
 
 const (
-	MenuOptions = "[i]nfo | select [m]odel | [u]pdate models | [h]istory | change [c]onfig | [q]uit"
-	WelcomeMessage = `🍎 One-shot Groq CLI chat
-` + MenuOptions + `
-
-`
+	MenuOptions = "[i]nfo | [m]odel | [u]pdate | [h]istory ([s]ave:%s) | [c]onfig | [q]uit"
+	WelcomeMessage = `🍎 One-shot Groq CLI chat`
 
 	Prompt           = "[%s] > "
 	InfoModel        = "Current model: %s\n"
