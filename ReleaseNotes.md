@@ -1,5 +1,26 @@
 # Release Notes - groq-chat
 
+## v1.0.2
+### New Features
+- **Save History Toggle**: Implemented a `save_history` switch in `config.yaml` to control chat history saving.
+  - Default value `false` for new configurations.
+  - `save_history` status is read from `config.yaml` on startup and when switching configurations.
+  - Validation ensures `save_history` can only be `true` or `false`.
+- **Conditional Chat History Saving**: Chat history is now saved only when `save_history` is enabled in the configuration.
+
+### UI/UX Improvements
+- **Updated Menu Format**: The main menu now displays as:
+  ```
+  [i]nfo | [m]odel | [u]pdate | [h]istory ([s]ave:On/Off) | [c]onfig | [q]uit
+  ```
+  The `[s]ave` status dynamically shows `On` or `Off` based on the `save_history` setting.
+- **History Toggle Command**: The command to toggle history saving is `s`.
+- **App Title Display**: The `app_title` from `config.yaml` is now consistently displayed before the menu in all relevant instances:
+  - On application startup.
+  - After toggling history saving.
+  - After changing configuration files.
+  - After updating models.
+
 ## v1.0.0 - Response Statistics & Multi-Provider Support
 
 ### New Features
